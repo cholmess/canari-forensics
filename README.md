@@ -46,6 +46,12 @@ cp .canari.yml.example .canari.yml
 ./canari forensics audit run --config .canari.yml
 ```
 
+## Local demo checkpoint
+
+```bash
+./scripts/demo_local_audit.sh
+```
+
 ## Databricks direct scan
 
 ```bash

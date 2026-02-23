@@ -11,3 +11,6 @@ __pycache__/
 plan.md
 PLAN.md
 FORENSICS_OTEL_PLAN.md
+
+# Local audit artifacts
+.canari/
