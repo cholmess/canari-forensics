@@ -4,6 +4,7 @@ Scan your LLM logs for breaches that already happened.
 ## Install
 
 ```bash
+python3 -m pip install --upgrade setuptools wheel
 python3 -m pip install -e . --no-build-isolation
 ```
 
