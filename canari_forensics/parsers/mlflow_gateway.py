@@ -7,13 +7,13 @@ from canari_forensics.models import ConversationTurn
 from canari_forensics.parsers.otel import CONTENT_FIELDS, ROLE_MAP, OTELParser
 
 
-class DatabricksAIGatewayParser(OTELParser):
-    """OTEL parser with MLflow/Databricks trace retrieval helpers."""
+class MLflowGatewayParser(OTELParser):
+    """OTEL parser with MLflow/MLflow trace retrieval helpers."""
 
     def parse_mlflow_experiment(
         self,
         experiment_id: str,
-        tracking_uri: str = "databricks",
+        tracking_uri: str = "mlflow",
         max_results: int = 1000,
         mlflow_client: Any | None = None,
     ) -> Iterator[ConversationTurn]:
@@ -24,7 +24,7 @@ class DatabricksAIGatewayParser(OTELParser):
                 import mlflow  # type: ignore
             except ImportError as exc:
                 raise RuntimeError(
-                    "mlflow is required for Databricks source. Install mlflow or provide mlflow_client."
+                    "mlflow is required for MLflow source. Install mlflow or provide mlflow_client."
                 ) from exc
 
             mlflow.set_tracking_uri(tracking_uri)
@@ -84,7 +84,7 @@ class DatabricksAIGatewayParser(OTELParser):
                 content=content,
                 timestamp=timestamp,
                 metadata=metadata,
-                source_format="databricks",
+                source_format="mlflow",
             )
 
     def _extract_trace_id(self, trace: Any) -> str:

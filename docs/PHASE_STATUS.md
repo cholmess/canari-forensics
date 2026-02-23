@@ -3,7 +3,7 @@
 ## Completed
 
 - Phase 0: OTEL parser core + MLflow native parsing + performance test baseline.
-- Phase 1: Databricks/MLflow integration path and CLI scan command.
+- Phase 1: MLflow integration path and CLI scan command.
 - Phase 2: Universal OTEL providers and receiver ingest + SQLite persistence.
 - Phase 3: Enterprise outputs (evidence JSON, PDF, BreakPoint snapshots).
 - Phase 4: Staged audits (`audit init`, `audit scan`, `audit report`).
@@ -17,7 +17,7 @@
 ## Current capabilities
 
 - Parse OTEL JSON traces and MLflow-style traces.
-- Scan Databricks experiment traces through MLflow client integration.
+- Scan MLflow experiment traces through MLflow client integration.
 - Generate deterministic findings and produce executive-friendly artifacts.
 - Persist and resume audits in `.canari/audits/` workspaces.
 - Run full audit workflow from `.canari.yml`.

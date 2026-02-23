@@ -47,7 +47,7 @@ forensics:
   client: "Acme Corp"
   application: "AI Gateway"
   audit_name: "Q1 2026 AI Gateway Audit"
-  tracking_uri: databricks
+  tracking_uri: mlflow
   max_results: 1000
 """.strip()
                     + "\n",

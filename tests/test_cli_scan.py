@@ -32,11 +32,11 @@ class CLIScanTests(unittest.TestCase):
             self.assertEqual(payload["source"], "otel")
             self.assertEqual(payload["turn_count"], 3)
 
-    def test_scan_databricks_requires_experiment_id(self) -> None:
-        rc = main(["forensics", "scan", "--source", "databricks", "--out", "x.json"])
+    def test_scan_mlflow_requires_experiment_id(self) -> None:
+        rc = main(["forensics", "scan", "--source", "mlflow", "--out", "x.json"])
         self.assertEqual(rc, 3)
 
-    def test_scan_databricks_with_mocked_parser(self) -> None:
+    def test_scan_mlflow_with_mocked_parser(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "db-report.json"
 
@@ -48,7 +48,7 @@ class CLIScanTests(unittest.TestCase):
                     "content": "leak",
                     "timestamp": "2026-02-22T14:29:00+00:00",
                     "metadata": {"span_id": "s1"},
-                    "source_format": "databricks",
+                    "source_format": "mlflow",
                 }
             ]
 
@@ -63,12 +63,12 @@ class CLIScanTests(unittest.TestCase):
                     content="leak",
                     timestamp=datetime(2026, 2, 22, 14, 29, 0, tzinfo=timezone.utc),
                     metadata={"span_id": "s1"},
-                    source_format="databricks",
+                    source_format="mlflow",
                 )
             ]
 
             with patch(
-                "canari_forensics.parsers.databricks.DatabricksAIGatewayParser.parse_mlflow_experiment",
+                "canari_forensics.parsers.mlflow_gateway.MLflowGatewayParser.parse_mlflow_experiment",
                 return_value=iter(mocked),
             ):
                 rc = main(
@@ -76,7 +76,7 @@ class CLIScanTests(unittest.TestCase):
                         "forensics",
                         "scan",
                         "--source",
-                        "databricks",
+                        "mlflow",
                         "--experiment-id",
                         "123",
                         "--out",
@@ -86,7 +86,7 @@ class CLIScanTests(unittest.TestCase):
 
             self.assertEqual(rc, 0)
             payload = json.loads(out.read_text(encoding="utf-8"))
-            self.assertEqual(payload["source"], "databricks")
+            self.assertEqual(payload["source"], "mlflow")
             self.assertEqual(payload["turn_count"], 1)
             self.assertEqual(payload["turns"][0]["content"], fake_turns[0]["content"])
 

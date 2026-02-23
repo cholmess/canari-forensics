@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import dataclass
 
-from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
+from canari_forensics.parsers.mlflow_gateway import MLflowGatewayParser
 
 
 @dataclass
@@ -44,7 +44,7 @@ class FakeMlflowClient:
         return self._traces
 
 
-class DatabricksParserTests(unittest.TestCase):
+class MLflowParserTests(unittest.TestCase):
     def test_parse_mlflow_experiment_with_injected_client(self) -> None:
         trace = FakeTrace(
             request_id="req-1",
@@ -71,7 +71,7 @@ class DatabricksParserTests(unittest.TestCase):
             ),
         )
 
-        parser = DatabricksAIGatewayParser()
+        parser = MLflowGatewayParser()
         turns = list(
             parser.parse_mlflow_experiment(
                 experiment_id="123",
@@ -84,7 +84,7 @@ class DatabricksParserTests(unittest.TestCase):
         self.assertEqual(turns[0].role, "user")
         self.assertEqual(turns[1].role, "assistant")
         self.assertEqual(turns[1].metadata["span_id"], "s1")
-        self.assertTrue(all(t.source_format == "databricks" for t in turns))
+        self.assertTrue(all(t.source_format == "mlflow" for t in turns))
 
 
 if __name__ == "__main__":

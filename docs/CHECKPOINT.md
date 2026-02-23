@@ -3,7 +3,7 @@
 This repository now supports the full local audit workflow:
 
 1. Parse OTEL JSON and MLflow-style traces.
-2. Scan Databricks traces (MLflow client path).
+2. Scan MLflow traces (MLflow client path).
 3. Generate findings, evidence JSON, `.bp.json` snapshots, and PDF report.
 4. Run staged audits (`audit init`, `audit scan`, `audit report`).
 5. Run one-command audit from config (`audit run`).

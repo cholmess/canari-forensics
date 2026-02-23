@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -10,7 +12,7 @@ from canari_forensics.audit import AuditManager
 from canari_forensics.config import load_simple_yaml
 from canari_forensics.errors import CanariError, ConfigError, InputError, NotFoundError, UsageError
 from canari_forensics.models import ConversationTurn
-from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
+from canari_forensics.parsers.mlflow_gateway import MLflowGatewayParser
 from canari_forensics.parsers.otel import OTELParser
 from canari_forensics.pdf import SimplePDF
 from canari_forensics.receiver import OTLPReceiver
@@ -46,14 +48,14 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--json", action="store_true")
 
     scan = forensics_sub.add_parser("scan", help="Scan traces")
-    scan.add_argument("--source", choices=["otel", "databricks"], required=True)
+    scan.add_argument("--source", choices=["otel", "mlflow"], required=True)
     scan.add_argument("--out", required=True)
-    scan.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "databricks"])
+    scan.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "mlflow"])
     scan.add_argument("--logs", help="Path to OTEL log JSON file or directory")
     scan.add_argument("--format", default="otlp-json", choices=["otlp-json", "mlflow"])
     scan.add_argument("--file-pattern", default="*.json", help="Glob pattern for OTEL files")
-    scan.add_argument("--experiment-id", help="MLflow/Databricks experiment ID")
-    scan.add_argument("--tracking-uri", default="databricks")
+    scan.add_argument("--experiment-id", help="MLflow/MLflow experiment ID")
+    scan.add_argument("--tracking-uri", default="mlflow")
     scan.add_argument("--max-results", type=int, default=1000)
 
     receive = forensics_sub.add_parser("receive", help="Run OTLP receiver")
@@ -88,11 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit_init = audit_sub.add_parser("init", help="Initialize an audit workspace")
     audit_init.add_argument("--name", required=True)
-    audit_init.add_argument("--source", choices=["otel", "databricks"], required=True)
-    audit_init.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "databricks"])
+    audit_init.add_argument("--source", choices=["otel", "mlflow"], required=True)
+    audit_init.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "mlflow"])
     audit_init.add_argument("--logs")
     audit_init.add_argument("--experiment-id")
-    audit_init.add_argument("--tracking-uri", default="databricks")
+    audit_init.add_argument("--tracking-uri", default="mlflow")
     audit_init.add_argument("--client", required=True)
     audit_init.add_argument("--application", required=True)
     audit_init.add_argument("--patterns-file")
@@ -238,7 +240,7 @@ def _main_audit(args: argparse.Namespace) -> int:
             format="otlp-json",
             logs=meta.get("logs"),
             experiment_id=meta.get("experiment_id"),
-            tracking_uri=meta.get("tracking_uri", "databricks"),
+            tracking_uri=meta.get("tracking_uri", "mlflow"),
             max_results=args.max_results,
             file_pattern=args.file_pattern,
             out=meta["scan_report"],
@@ -279,7 +281,7 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
     provider = str(fcfg.get("provider", "generic"))
     logs = fcfg.get("logs")
     experiment_id = fcfg.get("experiment_id")
-    tracking_uri = str(fcfg.get("tracking_uri", "databricks"))
+    tracking_uri = str(fcfg.get("tracking_uri", "mlflow"))
     client = str(fcfg.get("client", "Unknown Client"))
     application = str(fcfg.get("application", "Unknown Application"))
     file_pattern = str(fcfg.get("file_pattern", "*.json"))
@@ -314,12 +316,13 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
     if report_rc != 0:
         return report_rc
 
-    print(f"Audit run complete: {paths.root}")
     return 0
 
 
 def _main_scan(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
     turns = _run_scan(args)
+    elapsed = time.perf_counter() - started
 
     payload = {
         "source": args.source,
@@ -347,14 +350,16 @@ def _main_scan(args: argparse.Namespace) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-    print(
-        f"Scanned {payload['turn_count']} turns across {payload['conversations']} conversations. "
-        f"Report: {out}"
-    )
+    print("┌─ Scan Complete ───────────────────────────────────────────────")
+    print(f"Scanned: {payload['turn_count']} turns | {elapsed:.2f} seconds")
+    print(f"Conversations: {payload['conversations']}")
+    print(f"Scan report: {out}")
+    print("└───────────────────────────────────────────────────────────────")
     return 0
 
 
 def _main_report(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
     try:
         turns = load_turns_from_scan_report(args.scan_report)
     except FileNotFoundError as exc:
@@ -370,11 +375,80 @@ def _main_report(args: argparse.Namespace) -> int:
     lines = _build_pdf_lines(args.client, args.application, turns, findings, snapshots)
     SimplePDF().write(args.out_pdf, lines)
 
-    print(
-        f"Report generated. findings={len(findings)} evidence={args.out_evidence} "
-        f"pdf={args.out_pdf} bp_snapshots={snapshots}"
+    elapsed = time.perf_counter() - started
+    _print_incident_summary(
+        turns=turns,
+        findings=findings,
+        elapsed_seconds=elapsed,
+        evidence_path=args.out_evidence,
+        pdf_path=args.out_pdf,
+        snapshots=snapshots,
     )
     return 0
+
+
+def _print_incident_summary(
+    turns: list[ConversationTurn],
+    findings: list,
+    elapsed_seconds: float,
+    evidence_path: str,
+    pdf_path: str,
+    snapshots: int,
+) -> None:
+    now = datetime.now(timezone.utc)
+    print("┏━ Canari Forensics Incident Review ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"Scanned: {len(turns)} turns | {elapsed_seconds:.2f} seconds")
+    print(f"INCIDENTS FOUND: {len(findings)}")
+    print("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    if not findings:
+        print("No incidents detected in assistant outputs.")
+    else:
+        for idx, finding in enumerate(findings, start=1):
+            if idx > 1:
+                print("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(f"#{idx} Severity: {finding.severity}")
+            print(f"Pattern type: {finding.kind} ({finding.pattern_id})")
+            print(f"Occurred: {_format_elapsed_since(finding.timestamp, now)}")
+            print(f"Context: {_compact_context(finding.context)}")
+
+    print("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"Evidence: {evidence_path}")
+    print(f"PDF: {pdf_path}")
+    print(f"BreakPoint snapshots: {snapshots}")
+    print("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("These incidents occurred before you were monitoring.")
+    print("Canari would have caught them in real time.")
+
+
+def _format_elapsed_since(timestamp: str, now: datetime) -> str:
+    try:
+        observed = datetime.fromisoformat(timestamp)
+    except ValueError:
+        return "unknown time ago"
+
+    if observed.tzinfo is None:
+        observed = observed.replace(tzinfo=timezone.utc)
+
+    delta_seconds = max(0, int((now - observed).total_seconds()))
+    days = delta_seconds // 86400
+    hours = (delta_seconds % 86400) // 3600
+    minutes = (delta_seconds % 3600) // 60
+
+    if days > 0:
+        return f"{days} days ago"
+    if hours > 0:
+        return f"{hours} hours ago"
+    if minutes > 0:
+        return f"{minutes} minutes ago"
+    return "moments ago"
+
+
+def _compact_context(text: str, limit: int = 110) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return f"{compact[: limit - 3]}..."
 
 
 def _build_pdf_lines(
@@ -436,10 +510,10 @@ def _run_scan(args: argparse.Namespace) -> list[ConversationTurn]:
             return turns
         return list(parser.parse_file(path))
 
-    if args.source == "databricks":
+    if args.source == "mlflow":
         if not args.experiment_id:
-            raise InputError("--experiment-id is required when --source databricks")
-        parser = DatabricksAIGatewayParser()
+            raise InputError("--experiment-id is required when --source mlflow")
+        parser = MLflowGatewayParser()
         try:
             return list(
                 parser.parse_mlflow_experiment(
