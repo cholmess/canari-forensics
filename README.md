@@ -17,6 +17,17 @@ or credential leakage before you were monitoring. Exact pattern
 matching, no classifiers, no false positives. Runs locally in under
 a minute. No data leaves your environment.
 
+## Demo
+
+Run the local demo to see Canari Forensics find incidents in sample logs:
+```bash
+./scripts/demo_local_audit.sh
+```
+
+Expected output:
+
+![Canari demo](docs/demo.gif)
+
 ## Install
 
 ```bash
@@ -107,3 +118,18 @@ Outputs:
 - Evidence JSON with findings and metadata
 - PDF audit report for executive review
 - `.bp.json` snapshots for BreakPoint CI workflows
+
+## Related Tools
+
+- [BreakPoint](https://github.com/cholmess/breakpoint-ai) — catch regressions before you ship
+- [Canari](https://github.com/cholmess/canari) — detect attacks in real time
+- [Canari Forensics](https://github.com/cholmess/canari-forensics) — audit logs for past breaches
+
+## Maintainer
+
+Maintained by Christopher Holmes Silva.
+
+- X: https://x.com/cholmess
+- LinkedIn: https://linkedin.com/in/cholmess
+
+Feedback is welcome from developers shipping LLM applications.
