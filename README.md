@@ -26,6 +26,27 @@ Run the local demo to see Canari Forensics find incidents in sample logs:
 
 ![Canari demo](https://raw.githubusercontent.com/cholmess/canari-forensics/main/docs/demo.gif?v=2)
 
+## MLflow / OTEL Integration
+
+If you are using MLflow to trace your LLM applications, export
+your traces and point Canari Forensics at the output:
+```bash
+# Export traces from MLflow
+mlflow traces export \
+  --experiment-id YOUR_EXPERIMENT_ID \
+  --output-dir ./traces/
+
+# Scan with Canari Forensics
+canari forensics scan \
+  --source otel \
+  --provider generic \
+  --logs ./traces/ \
+  --out ./forensics-scan.json
+```
+
+Compatible with local MLflow and any platform
+that exports OTEL traces.
+
 ## Install
 
 ```bash
