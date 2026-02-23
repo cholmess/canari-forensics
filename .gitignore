@@ -14,3 +14,8 @@ FORENSICS_OTEL_PLAN.md
 
 # Local audit artifacts
 .canari/
+
+# Packaging artifacts
+dist/
+build/
+*.egg-info/

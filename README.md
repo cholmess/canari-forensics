@@ -1,11 +1,21 @@
 # canari-forensics
 Scan your LLM logs for breaches that already happened.
 
+LLM applications can leak internal context through prompt injection
+attacks. Your firewall never flags it because the exfiltration looks
+exactly like a legitimate API response. Most teams find out weeks
+later - if ever.
+
+Canari Forensics scans your existing LLM conversation logs and tells
+you definitively whether you have had any successful prompt injection
+or credential leakage before you were monitoring. Exact pattern
+matching, no classifiers, no false positives. Runs locally in under
+a minute. No data leaves your environment.
+
 ## Install
 
 ```bash
-python3 -m pip install --upgrade setuptools wheel
-python3 -m pip install -e . --no-build-isolation
+pip install canari-forensics
 ```
 
 If your environment blocks package installs, you can run directly with `python3 -m canari_forensics ...`.
@@ -70,16 +80,6 @@ The JSON file should contain either `{"patterns": [...]}` or a top-level array, 
 
 ```bash
 ./scripts/demo_local_audit.sh
-```
-
-## Databricks direct scan
-
-```bash
-canari forensics scan \
-  --source databricks \
-  --experiment-id 1234567890 \
-  --tracking-uri databricks \
-  --out ./forensics-scan.json
 ```
 
 ## Real-time OTLP receiver
