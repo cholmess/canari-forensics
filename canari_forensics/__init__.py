@@ -3,6 +3,7 @@
 from .models import ConversationTurn
 from .parsers import DatabricksAIGatewayParser, OTELParser
 from .receiver import OTLPReceiver
+from .reporting import Finding, detect_findings
 from .storage import SQLiteTurnStore
 
 __all__ = [
@@ -11,4 +12,6 @@ __all__ = [
     "DatabricksAIGatewayParser",
     "OTLPReceiver",
     "SQLiteTurnStore",
+    "Finding",
+    "detect_findings",
 ]

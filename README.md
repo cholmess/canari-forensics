@@ -4,26 +4,42 @@ Scan your LLM logs for breaches that already happened.
 ## Quick start
 
 ```bash
-# Scan OTEL JSON exports (generic/datadog/honeycomb via --provider)
+# 1) Scan OTEL JSON exports (generic/datadog/honeycomb via --provider)
 ./canari forensics scan \
   --source otel \
   --provider generic \
   --logs ./otel-traces \
   --file-pattern '*.json' \
-  --out ./forensics-report.json
+  --out ./forensics-scan.json
 
-# Scan Databricks/MLflow traces directly
-./canari forensics scan \
-  --source databricks \
-  --experiment-id 1234567890 \
-  --tracking-uri databricks \
-  --out ./forensics-report.json
+# 2) Generate enterprise audit outputs
+./canari forensics report \
+  --scan-report ./forensics-scan.json \
+  --client "Acme Corp" \
+  --application "AI Gateway" \
+  --out-pdf ./audit-report.pdf \
+  --out-evidence ./canari-evidence.json \
+  --bp-dir ./tests/attacks
 
-# Run OTLP receiver mode (real-time ingest)
+# 3) (Optional) Run OTLP receiver mode (real-time ingest)
 ./canari forensics receive \
   --host 0.0.0.0 \
   --port 4318 \
   --db ./canari-forensics.db
 ```
 
-Scan output is JSON with normalized conversation turns. Receiver mode persists turns in SQLite for continuous monitoring pipelines.
+## Databricks direct scan
+
+```bash
+./canari forensics scan \
+  --source databricks \
+  --experiment-id 1234567890 \
+  --tracking-uri databricks \
+  --out ./forensics-scan.json
+```
+
+Outputs:
+- Scan JSON with normalized conversation turns
+- Evidence JSON with findings and metadata
+- PDF audit report for executive review
+- `.bp.json` snapshots for BreakPoint CI workflows

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -10,6 +9,14 @@ from canari_forensics.models import ConversationTurn
 from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
 from canari_forensics.parsers.otel import OTELParser
 from canari_forensics.receiver import OTLPReceiver
+from canari_forensics.reporting import (
+    build_evidence_pack,
+    detect_findings,
+    load_turns_from_scan_report,
+    write_bp_snapshots,
+    write_evidence_pack,
+)
+from canari_forensics.pdf import SimplePDF
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,12 +29,10 @@ def build_parser() -> argparse.ArgumentParser:
     scan = forensics_sub.add_parser("scan", help="Scan traces")
     scan.add_argument("--source", choices=["otel", "databricks"], required=True)
     scan.add_argument("--out", required=True)
-
     scan.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "databricks"])
     scan.add_argument("--logs", help="Path to OTEL log JSON file or directory")
     scan.add_argument("--format", default="otlp-json", choices=["otlp-json", "mlflow"])
     scan.add_argument("--file-pattern", default="*.json", help="Glob pattern for OTEL files")
-
     scan.add_argument("--experiment-id", help="MLflow/Databricks experiment ID")
     scan.add_argument("--tracking-uri", default="databricks")
     scan.add_argument("--max-results", type=int, default=1000)
@@ -36,6 +41,14 @@ def build_parser() -> argparse.ArgumentParser:
     receive.add_argument("--host", default="0.0.0.0")
     receive.add_argument("--port", type=int, default=4318)
     receive.add_argument("--db", required=True)
+
+    report = forensics_sub.add_parser("report", help="Generate enterprise audit report")
+    report.add_argument("--scan-report", required=True, help="Path to scan JSON output")
+    report.add_argument("--client", required=True)
+    report.add_argument("--application", required=True)
+    report.add_argument("--out-pdf", required=True)
+    report.add_argument("--out-evidence", required=True)
+    report.add_argument("--bp-dir", required=True)
 
     return parser
 
@@ -60,11 +73,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         return 0
 
+    if args.forensics_command == "report":
+        return _main_report(args)
+
     parser.print_help()
     return 2
 
 
 def _main_scan(args: argparse.Namespace) -> int:
+    import json
+
     try:
         turns = _run_scan(args)
     except Exception as exc:  # pragma: no cover - top-level UX path
@@ -101,6 +119,70 @@ def _main_scan(args: argparse.Namespace) -> int:
         f"Report: {out}"
     )
     return 0
+
+
+def _main_report(args: argparse.Namespace) -> int:
+    try:
+        turns = load_turns_from_scan_report(args.scan_report)
+        findings = detect_findings(turns)
+        evidence = build_evidence_pack(args.client, args.application, turns, findings)
+        write_evidence_pack(args.out_evidence, evidence)
+        snapshots = write_bp_snapshots(args.bp_dir, findings)
+
+        lines = _build_pdf_lines(args.client, args.application, turns, findings, snapshots)
+        SimplePDF().write(args.out_pdf, lines)
+    except Exception as exc:  # pragma: no cover
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        f"Report generated. findings={len(findings)} evidence={args.out_evidence} "
+        f"pdf={args.out_pdf} bp_snapshots={snapshots}"
+    )
+    return 0
+
+
+def _build_pdf_lines(
+    client: str,
+    application: str,
+    turns: list[ConversationTurn],
+    findings: list,
+    snapshots: int,
+) -> list[str]:
+    severities = {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 0}
+    overall = "LOW"
+    if findings:
+        overall = max((f.severity for f in findings), key=lambda s: severities.get(s, 0))
+
+    lines = [
+        "CANARI FORENSICS - LLM SECURITY AUDIT REPORT",
+        f"Client: {client}",
+        f"Application: {application}",
+        f"Traces scanned: {len({t.conversation_id for t in turns})}",
+        f"Turns analyzed: {len(turns)}",
+        f"Findings: {len(findings)}",
+        f"Overall Risk: {overall}",
+        f"BreakPoint snapshots: {snapshots}",
+        "",
+        "FINDINGS",
+    ]
+
+    if not findings:
+        lines.append("No findings detected.")
+        return lines
+
+    for f in findings[:20]:
+        lines.extend(
+            [
+                f"{f.finding_id} [{f.severity}] {f.pattern_name}",
+                f"Trace: {f.trace_id}",
+                f"Timestamp: {f.timestamp}",
+                f"Value: {f.matched_value}",
+                f"Action: {f.action}",
+                "",
+            ]
+        )
+    return lines
 
 
 def _run_scan(args: argparse.Namespace) -> list[ConversationTurn]:
