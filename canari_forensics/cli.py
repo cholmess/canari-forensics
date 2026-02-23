@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -20,6 +21,7 @@ from canari_forensics.reporting import (
     write_bp_snapshots,
     write_evidence_pack,
 )
+from canari_forensics.status import collect_status
 from canari_forensics.version import __version__
 
 
@@ -31,6 +33,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     forensics = sub.add_parser("forensics", help="Forensics operations")
     forensics_sub = forensics.add_subparsers(dest="forensics_command")
+
+    status = forensics_sub.add_parser("status", help="Show quick workspace status")
+    status.add_argument("--json", action="store_true")
 
     scan = forensics_sub.add_parser("scan", help="Scan traces")
     scan.add_argument("--source", choices=["otel", "databricks"], required=True)
@@ -91,6 +96,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command != "forensics":
             raise UsageError("Missing command. Use: canari forensics ...")
 
+        if args.forensics_command == "status":
+            return _main_status(args)
+
         if args.forensics_command == "scan":
             return _main_scan(args)
 
@@ -109,11 +117,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.forensics_command == "audit":
             return _main_audit(args)
 
-        raise UsageError("Missing subcommand. Use: canari forensics <scan|report|receive|audit>")
+        raise UsageError("Missing subcommand. Use: canari forensics <status|scan|report|receive|audit>")
 
     except CanariError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return exc.exit_code
+
+
+def _main_status(args: argparse.Namespace) -> int:
+    st = collect_status(".")
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "version": st.version,
+                    "has_config": st.has_config,
+                    "audits_count": st.audits_count,
+                    "latest_audit": st.latest_audit,
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(f"version: {st.version}")
+        print(f"has_config: {st.has_config}")
+        print(f"audits_count: {st.audits_count}")
+        print(f"latest_audit: {st.latest_audit or '-'}")
+    return 0
 
 
 def _main_audit(args: argparse.Namespace) -> int:
@@ -223,8 +253,6 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
 
 
 def _main_scan(args: argparse.Namespace) -> int:
-    import json
-
     turns = _run_scan(args)
 
     payload = {
