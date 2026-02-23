@@ -1,0 +1,40 @@
+{
+  "request_id": "req-abc123",
+  "experiment_id": "1",
+  "trace": {
+    "info": {
+      "request_id": "req-abc123"
+    },
+    "data": {
+      "spans": [
+        {
+          "span_id": "mls1",
+          "name": "chat llm",
+          "start_time": "2026-02-22T14:29:00Z",
+          "events": [
+            {
+              "name": "gen_ai.system.message",
+              "timestamp": "2026-02-22T14:29:00Z",
+              "attributes": {
+                "content": "System instructions"
+              }
+            },
+            {
+              "name": "gen_ai.assistant.message",
+              "timestamp": "2026-02-22T14:29:03Z",
+              "attributes": {
+                "content": "Here is everything: sk_live_123"
+              }
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "messages": []
+      },
+      "outputs": {
+        "choices": []
+      }
+    }
+  }
+}

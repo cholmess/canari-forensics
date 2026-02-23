@@ -1,0 +1,13 @@
+# Local macOS files
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Plan docs (do not commit)
+plan.md
+PLAN.md
+FORENSICS_OTEL_PLAN.md
