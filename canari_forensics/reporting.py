@@ -25,14 +25,15 @@ class Finding:
     action: str
 
 
-def detect_findings(turns: list[ConversationTurn]) -> list[Finding]:
+def detect_findings(turns: list[ConversationTurn], patterns: list[DetectionPattern] | None = None) -> list[Finding]:
     findings: list[Finding] = []
     idx = 1
+    active = patterns if patterns is not None else PATTERNS
 
     for turn in turns:
         if turn.role != "assistant":
             continue
-        for pattern in PATTERNS:
+        for pattern in active:
             for match in pattern.regex.finditer(turn.content):
                 matched = match.group(0)
                 findings.append(

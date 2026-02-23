@@ -37,6 +37,7 @@ class AuditManager:
         tracking_uri: str,
         client: str,
         application: str,
+        patterns_file: str | None = None,
     ) -> AuditPaths:
         audit_id = _slug(name)
         root = self.base_dir / audit_id
@@ -54,6 +55,7 @@ class AuditManager:
             "tracking_uri": tracking_uri,
             "client": client,
             "application": application,
+            "patterns_file": patterns_file,
             "scan_report": str(paths.scan_report),
             "evidence": str(paths.evidence),
             "pdf": str(paths.pdf),

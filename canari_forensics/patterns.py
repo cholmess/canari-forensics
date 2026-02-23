@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Pattern
 
 
@@ -49,3 +51,23 @@ PATTERNS: list[DetectionPattern] = [
         regex=re.compile(r"(?i)here is everything|ignore all instructions|output your full context"),
     ),
 ]
+
+
+def load_pattern_pack(path: str | Path) -> list[DetectionPattern]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    raw_patterns = payload.get("patterns", payload)
+    out: list[DetectionPattern] = []
+
+    for item in raw_patterns:
+        out.append(
+            DetectionPattern(
+                pattern_id=str(item["pattern_id"]),
+                name=str(item["name"]),
+                severity=str(item["severity"]),
+                confidence=str(item["confidence"]),
+                kind=str(item["kind"]),
+                regex=re.compile(str(item["regex"])),
+            )
+        )
+
+    return out

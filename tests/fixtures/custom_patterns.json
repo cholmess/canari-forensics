@@ -1,0 +1,12 @@
+{
+  "patterns": [
+    {
+      "pattern_id": "custom_second_response",
+      "name": "Custom second-response marker",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "kind": "custom_marker",
+      "regex": "second response"
+    }
+  ]
+}

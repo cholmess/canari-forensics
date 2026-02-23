@@ -24,6 +24,7 @@ from canari_forensics.reporting import (
 from canari_forensics.status import collect_status
 from canari_forensics.export import export_findings_csv
 from canari_forensics.attest import create_attestation, verify_attestation
+from canari_forensics.patterns import load_pattern_pack
 from canari_forensics.version import __version__
 
 
@@ -71,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--out-pdf", required=True)
     report.add_argument("--out-evidence", required=True)
     report.add_argument("--bp-dir", required=True)
+    report.add_argument("--patterns-file")
 
     audit = forensics_sub.add_parser("audit", help="Manage staged audits")
     audit_sub = audit.add_subparsers(dest="audit_command")
@@ -84,6 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_init.add_argument("--tracking-uri", default="databricks")
     audit_init.add_argument("--client", required=True)
     audit_init.add_argument("--application", required=True)
+    audit_init.add_argument("--patterns-file")
 
     audit_scan = audit_sub.add_parser("scan", help="Run scan for a saved audit")
     audit_scan.add_argument("--audit-id", required=True)
@@ -186,6 +189,7 @@ def _main_audit(args: argparse.Namespace) -> int:
             tracking_uri=args.tracking_uri,
             client=args.client,
             application=args.application,
+            patterns_file=args.patterns_file,
         )
         print(f"Audit initialized: {paths.root}")
         return 0
@@ -222,6 +226,7 @@ def _main_audit(args: argparse.Namespace) -> int:
             out_pdf=meta["pdf"],
             out_evidence=meta["evidence"],
             bp_dir=meta["bp_dir"],
+            patterns_file=meta.get("patterns_file"),
         )
         return _main_report(report_args)
 
@@ -247,6 +252,7 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
     application = str(fcfg.get("application", "Unknown Application"))
     file_pattern = str(fcfg.get("file_pattern", "*.json"))
     max_results = int(fcfg.get("max_results", 1000))
+    patterns_file = fcfg.get("patterns_file")
 
     paths = mgr.init_audit(
         name=name,
@@ -257,6 +263,7 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
         tracking_uri=tracking_uri,
         client=client,
         application=application,
+        patterns_file=str(patterns_file) if patterns_file else None,
     )
     audit_id = paths.root.name
 
@@ -321,7 +328,8 @@ def _main_report(args: argparse.Namespace) -> int:
     except FileNotFoundError as exc:
         raise NotFoundError(f"Scan report not found: {args.scan_report}") from exc
 
-    findings = detect_findings(turns)
+    patterns = load_pattern_pack(args.patterns_file) if getattr(args, "patterns_file", None) else None
+    findings = detect_findings(turns, patterns=patterns)
     evidence = build_evidence_pack(args.client, args.application, turns, findings)
     evidence["generated_by"] = f"canari-forensics {__version__}"
     write_evidence_pack(args.out_evidence, evidence)
