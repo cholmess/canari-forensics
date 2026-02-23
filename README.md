@@ -1,6 +1,6 @@
 # canari-forensics
 
-[![PyPI package](https://img.shields.io/badge/pypi-package%20pending-lightgrey)](docs/PYPI_RELEASE.md)
+[![PyPI package](https://img.shields.io/pypi/v/canari-forensics?label=pypi%20package)](https://pypi.org/project/canari-forensics/)
 [![CI](https://github.com/cholmess/canari-forensics/actions/workflows/ci.yml/badge.svg)](https://github.com/cholmess/canari-forensics/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -49,7 +49,7 @@ These incidents occurred before you were monitoring.
 Canari would have caught them in real time.
 ```
 
-![Canari demo](docs/demo.gif)
+![Canari demo](https://raw.githubusercontent.com/cholmess/canari-forensics/main/docs/demo.gif)
 
 ## Install
 

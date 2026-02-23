@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "canari-forensics"
-version = "0.1.0"
+version = "0.1.1"
 description = "Scan historical LLM traces for credential leaks and prompt-injection evidence"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
   { name = "Canari" }
 ]
-license = { file = "LICENSE" }
+license = { text = "MIT" }
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
