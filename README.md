@@ -24,7 +24,7 @@ Run the local demo to see Canari Forensics find incidents in sample logs:
 ./scripts/demo_local_audit.sh
 ```
 
-![Canari demo](https://raw.githubusercontent.com/cholmess/canari-forensics/main/docs/demo.gif)
+![Canari demo](https://raw.githubusercontent.com/cholmess/canari-forensics/main/docs/demo.gif?v=2)
 
 ## Install
 
