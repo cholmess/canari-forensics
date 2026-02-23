@@ -1,6 +1,10 @@
 # canari-forensics
 Scan your LLM logs for breaches that already happened.
 
+Version: `0.1.0`  
+License: `MIT`  
+Python: `>=3.10`
+
 LLM applications can leak internal context through prompt injection
 attacks. Your firewall never flags it because the exfiltration looks
 exactly like a legitimate API response. Most teams find out weeks
@@ -66,15 +70,21 @@ cp .canari.yml.example .canari.yml
 canari forensics audit run --config .canari.yml
 ```
 
-
 ## Custom pattern packs
 
 ```bash
-canari forensics report   --scan-report ./forensics-scan.json   --client "Acme Corp"   --application "AI Gateway"   --out-pdf ./audit-report.pdf   --out-evidence ./canari-evidence.json   --bp-dir ./tests/attacks   --patterns-file ./custom_patterns.json
+canari forensics report \
+  --scan-report ./forensics-scan.json \
+  --client "Acme Corp" \
+  --application "AI Gateway" \
+  --out-pdf ./audit-report.pdf \
+  --out-evidence ./canari-evidence.json \
+  --bp-dir ./tests/attacks \
+  --patterns-file ./custom_patterns.json
 ```
 
-The JSON file should contain either `{"patterns": [...]}` or a top-level array, where each pattern has:
-`pattern_id`, `name`, `severity`, `confidence`, `kind`, `regex`.
+The JSON file should contain either `{"patterns": [...]}` or a top-level array,
+where each pattern has: `pattern_id`, `name`, `severity`, `confidence`, `kind`, `regex`.
 
 ## Local demo checkpoint
 
