@@ -26,6 +26,7 @@ from canari_forensics.export import export_findings_csv
 from canari_forensics.attest import create_attestation, verify_attestation
 from canari_forensics.patterns import load_pattern_pack
 from canari_forensics.doctor import doctor_payload
+from canari_forensics.summary import summarize_evidence
 from canari_forensics.version import __version__
 
 
@@ -61,6 +62,10 @@ def build_parser() -> argparse.ArgumentParser:
     receive.add_argument("--db", required=True)
 
     report = forensics_sub.add_parser("report", help="Generate enterprise audit report")
+
+    summarize = forensics_sub.add_parser("summarize", help="Print executive summary from evidence")
+    summarize.add_argument("--from-evidence", required=True)
+    summarize.add_argument("--json", action="store_true")
 
     export = forensics_sub.add_parser("export", help="Export findings from evidence")
     export.add_argument("--from-evidence", required=True)
@@ -143,6 +148,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.forensics_command == "report":
             return _main_report(args)
 
+        if args.forensics_command == "summarize":
+            summary = summarize_evidence(args.from_evidence)
+            if args.json:
+                print(json.dumps(summary, indent=2))
+            else:
+                print(f"client: {summary['client']}")
+                print(f"application: {summary['application']}")
+                print(f"overall_risk: {summary['overall_risk']}")
+                print(f"findings_count: {summary['findings_count']}")
+                print(f"severity_counts: {summary['severity_counts']}")
+            return 0
+
         if args.forensics_command == "export":
             count = export_findings_csv(args.from_evidence, args.out_csv)
             print(f"Exported {count} findings to {args.out_csv}")
@@ -162,7 +179,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.forensics_command == "audit":
             return _main_audit(args)
 
-        raise UsageError("Missing subcommand. Use: canari forensics <status|doctor|scan|report|export|attest|receive|audit>")
+        raise UsageError("Missing subcommand. Use: canari forensics <status|doctor|scan|report|summarize|export|attest|receive|audit>")
 
     except CanariError as exc:
         print(f"error: {exc}", file=sys.stderr)
