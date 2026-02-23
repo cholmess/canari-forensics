@@ -20,10 +20,13 @@ from canari_forensics.reporting import (
     write_bp_snapshots,
     write_evidence_pack,
 )
+from canari_forensics.version import __version__
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="canari", description="Canari Forensics CLI")
+    parser.add_argument("--version", action="version", version=f"canari-forensics {__version__}")
+
     sub = parser.add_subparsers(dest="command")
 
     forensics = sub.add_parser("forensics", help="Forensics operations")
@@ -228,6 +231,7 @@ def _main_scan(args: argparse.Namespace) -> int:
         "source": args.source,
         "provider": args.provider,
         "format": args.format,
+        "generated_by": f"canari-forensics {__version__}",
         "turn_count": len(turns),
         "assistant_turn_count": sum(1 for t in turns if t.role == "assistant"),
         "conversations": len({t.conversation_id for t in turns}),
@@ -264,6 +268,7 @@ def _main_report(args: argparse.Namespace) -> int:
 
     findings = detect_findings(turns)
     evidence = build_evidence_pack(args.client, args.application, turns, findings)
+    evidence["generated_by"] = f"canari-forensics {__version__}"
     write_evidence_pack(args.out_evidence, evidence)
     snapshots = write_bp_snapshots(args.bp_dir, findings)
 
@@ -291,6 +296,7 @@ def _build_pdf_lines(
 
     lines = [
         "CANARI FORENSICS - LLM SECURITY AUDIT REPORT",
+        f"Version: canari-forensics {__version__}",
         f"Client: {client}",
         f"Application: {application}",
         f"Traces scanned: {len({t.conversation_id for t in turns})}",
