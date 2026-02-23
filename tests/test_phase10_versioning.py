@@ -18,7 +18,7 @@ class Phase10VersioningTests(unittest.TestCase):
         with self.assertRaises(SystemExit) as ctx, redirect_stdout(buf):
             main(["--version"])
         self.assertEqual(ctx.exception.code, 0)
-        self.assertIn("canari-forensics 0.1.1", buf.getvalue())
+        self.assertIn("canari-forensics 0.1.2", buf.getvalue())
 
     def test_scan_and_evidence_include_generated_by(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

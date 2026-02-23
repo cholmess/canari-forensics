@@ -24,31 +24,6 @@ Run the local demo to see Canari Forensics find incidents in sample logs:
 ./scripts/demo_local_audit.sh
 ```
 
-Expected output:
-
-```text
-┌─ Scan Complete ───────────────────────────────────────────────
-Scanned: 2 turns | 0.00 seconds
-Conversations: 1
-Scan report: .canari/audits/demo-local-otel-audit/scan-report.json
-└───────────────────────────────────────────────────────────────
-┏━ Canari Forensics Incident Review ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Scanned: 2 turns | 0.00 seconds
-INCIDENTS FOUND: 1
-┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#1 Severity: CRITICAL
-Pattern type: real_credential_leak (cred_stripe_live)
-Occurred: 94 days ago
-Context: ... stripe_live_key=sk_live_...
-┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Evidence: .canari/audits/demo-local-otel-audit/evidence.json
-PDF: .canari/audits/demo-local-otel-audit/audit-report.pdf
-BreakPoint snapshots: 1
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-These incidents occurred before you were monitoring.
-Canari would have caught them in real time.
-```
-
 ![Canari demo](https://raw.githubusercontent.com/cholmess/canari-forensics/main/docs/demo.gif)
 
 ## Install
