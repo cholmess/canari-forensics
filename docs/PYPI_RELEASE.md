@@ -24,15 +24,9 @@ The workflow will:
 - build sdist/wheel
 - publish to PyPI via OIDC (no API token needed)
 
-## Manual fallback release
+## Manual release
 
 ```bash
 ./scripts/release_pypi.sh
 python3 -m twine upload dist/*
-```
-
-Test upload first:
-
-```bash
-python3 -m twine upload --repository testpypi dist/*
 ```

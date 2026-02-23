@@ -19,3 +19,6 @@ FORENSICS_OTEL_PLAN.md
 dist/
 build/
 *.egg-info/
+
+# PyPI credentials (local only)
+.pypirc

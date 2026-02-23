@@ -32,5 +32,8 @@ ls -lh dist
 
 echo
 echo "Upload commands:"
-echo "  TestPyPI: python3 -m twine upload --repository testpypi dist/*"
-echo "  PyPI:     python3 -m twine upload dist/*"
+if [ -f ".pypirc" ]; then
+  echo "  PyPI:     python3 -m twine upload --config-file .pypirc --repository pypi dist/*"
+else
+  echo "  PyPI:     python3 -m twine upload dist/*"
+fi
