@@ -55,6 +55,16 @@ cp .canari.yml.example .canari.yml
 canari forensics audit run --config .canari.yml
 ```
 
+
+## Custom pattern packs
+
+```bash
+canari forensics report   --scan-report ./forensics-scan.json   --client "Acme Corp"   --application "AI Gateway"   --out-pdf ./audit-report.pdf   --out-evidence ./canari-evidence.json   --bp-dir ./tests/attacks   --patterns-file ./custom_patterns.json
+```
+
+The JSON file should contain either `{"patterns": [...]}` or a top-level array, where each pattern has:
+`pattern_id`, `name`, `severity`, `confidence`, `kind`, `regex`.
+
 ## Local demo checkpoint
 
 ```bash

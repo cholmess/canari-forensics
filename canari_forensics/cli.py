@@ -25,6 +25,7 @@ from canari_forensics.status import collect_status
 from canari_forensics.export import export_findings_csv
 from canari_forensics.attest import create_attestation, verify_attestation
 from canari_forensics.patterns import load_pattern_pack
+from canari_forensics.doctor import doctor_payload
 from canari_forensics.version import __version__
 
 
@@ -39,6 +40,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = forensics_sub.add_parser("status", help="Show quick workspace status")
     status.add_argument("--json", action="store_true")
+
+    doctor = forensics_sub.add_parser("doctor", help="Run quick environment diagnostics")
+    doctor.add_argument("--json", action="store_true")
 
     scan = forensics_sub.add_parser("scan", help="Scan traces")
     scan.add_argument("--source", choices=["otel", "databricks"], required=True)
@@ -116,6 +120,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.forensics_command == "scan":
             return _main_scan(args)
 
+        if args.forensics_command == "doctor":
+            payload = doctor_payload(".")
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                for c in payload["checks"]:
+                    mark = "OK" if c["ok"] else "FAIL"
+                    print(f"[{mark}] {c['name']}: {c['detail']}")
+                print(f"overall_ok: {payload['ok']}")
+            return 0 if payload["ok"] else 1
+
         if args.forensics_command == "receive":
             receiver = OTLPReceiver(host=args.host, port=args.port, db_path=args.db)
             print(f"Canari OTLP receiver listening on http://{args.host}:{args.port}/v1/traces")
@@ -147,7 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.forensics_command == "audit":
             return _main_audit(args)
 
-        raise UsageError("Missing subcommand. Use: canari forensics <status|scan|report|export|attest|receive|audit>")
+        raise UsageError("Missing subcommand. Use: canari forensics <status|doctor|scan|report|export|attest|receive|audit>")
 
     except CanariError as exc:
         print(f"error: {exc}", file=sys.stderr)
