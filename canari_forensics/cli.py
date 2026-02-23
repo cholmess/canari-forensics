@@ -5,9 +5,11 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from canari_forensics.audit import AuditManager
 from canari_forensics.models import ConversationTurn
 from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
 from canari_forensics.parsers.otel import OTELParser
+from canari_forensics.pdf import SimplePDF
 from canari_forensics.receiver import OTLPReceiver
 from canari_forensics.reporting import (
     build_evidence_pack,
@@ -16,7 +18,6 @@ from canari_forensics.reporting import (
     write_bp_snapshots,
     write_evidence_pack,
 )
-from canari_forensics.pdf import SimplePDF
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,6 +51,27 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--out-evidence", required=True)
     report.add_argument("--bp-dir", required=True)
 
+    audit = forensics_sub.add_parser("audit", help="Manage staged audits")
+    audit_sub = audit.add_subparsers(dest="audit_command")
+
+    audit_init = audit_sub.add_parser("init", help="Initialize an audit workspace")
+    audit_init.add_argument("--name", required=True)
+    audit_init.add_argument("--source", choices=["otel", "databricks"], required=True)
+    audit_init.add_argument("--provider", default="generic", choices=["generic", "datadog", "honeycomb", "databricks"])
+    audit_init.add_argument("--logs")
+    audit_init.add_argument("--experiment-id")
+    audit_init.add_argument("--tracking-uri", default="databricks")
+    audit_init.add_argument("--client", required=True)
+    audit_init.add_argument("--application", required=True)
+
+    audit_scan = audit_sub.add_parser("scan", help="Run scan for a saved audit")
+    audit_scan.add_argument("--audit-id", required=True)
+    audit_scan.add_argument("--file-pattern", default="*.json")
+    audit_scan.add_argument("--max-results", type=int, default=1000)
+
+    audit_report = audit_sub.add_parser("report", help="Generate report for a saved audit")
+    audit_report.add_argument("--audit-id", required=True)
+
     return parser
 
 
@@ -76,8 +98,63 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.forensics_command == "report":
         return _main_report(args)
 
+    if args.forensics_command == "audit":
+        return _main_audit(args)
+
     parser.print_help()
     return 2
+
+
+def _main_audit(args: argparse.Namespace) -> int:
+    mgr = AuditManager()
+
+    try:
+        if args.audit_command == "init":
+            paths = mgr.init_audit(
+                name=args.name,
+                source=args.source,
+                provider=args.provider,
+                logs=args.logs,
+                experiment_id=args.experiment_id,
+                tracking_uri=args.tracking_uri,
+                client=args.client,
+                application=args.application,
+            )
+            print(f"Audit initialized: {paths.root}")
+            return 0
+
+        if args.audit_command == "scan":
+            meta = mgr.load_metadata(args.audit_id)
+            scan_args = argparse.Namespace(
+                source=meta["source"],
+                provider=meta.get("provider", "generic"),
+                format="otlp-json",
+                logs=meta.get("logs"),
+                experiment_id=meta.get("experiment_id"),
+                tracking_uri=meta.get("tracking_uri", "databricks"),
+                max_results=args.max_results,
+                file_pattern=args.file_pattern,
+                out=meta["scan_report"],
+            )
+            return _main_scan(scan_args)
+
+        if args.audit_command == "report":
+            meta = mgr.load_metadata(args.audit_id)
+            report_args = argparse.Namespace(
+                scan_report=meta["scan_report"],
+                client=meta["client"],
+                application=meta["application"],
+                out_pdf=meta["pdf"],
+                out_evidence=meta["evidence"],
+                bp_dir=meta["bp_dir"],
+            )
+            return _main_report(report_args)
+
+        raise ValueError("Missing audit subcommand")
+
+    except Exception as exc:  # pragma: no cover
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 def _main_scan(args: argparse.Namespace) -> int:

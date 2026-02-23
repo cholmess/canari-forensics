@@ -20,12 +20,23 @@ Scan your LLM logs for breaches that already happened.
   --out-pdf ./audit-report.pdf \
   --out-evidence ./canari-evidence.json \
   --bp-dir ./tests/attacks
+```
 
-# 3) (Optional) Run OTLP receiver mode (real-time ingest)
-./canari forensics receive \
-  --host 0.0.0.0 \
-  --port 4318 \
-  --db ./canari-forensics.db
+## Staged audit workflow
+
+```bash
+# initialize audit workspace
+./canari forensics audit init \
+  --name "Q1 2026 AI Gateway Audit" \
+  --source otel \
+  --provider generic \
+  --logs ./otel-traces \
+  --client "Acme Corp" \
+  --application "AI Gateway"
+
+# run scan and report using stored metadata
+./canari forensics audit scan --audit-id q1-2026-ai-gateway-audit
+./canari forensics audit report --audit-id q1-2026-ai-gateway-audit
 ```
 
 ## Databricks direct scan
@@ -36,6 +47,15 @@ Scan your LLM logs for breaches that already happened.
   --experiment-id 1234567890 \
   --tracking-uri databricks \
   --out ./forensics-scan.json
+```
+
+## Real-time OTLP receiver
+
+```bash
+./canari forensics receive \
+  --host 0.0.0.0 \
+  --port 4318 \
+  --db ./canari-forensics.db
 ```
 
 Outputs:
