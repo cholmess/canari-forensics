@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "canari-forensics"
+version = "0.1.0"
+description = "Scan historical LLM traces for credential leaks and prompt-injection evidence"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Canari" }
+]
+license = { text = "Proprietary" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent"
+]
+
+[project.scripts]
+canari = "canari_forensics.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["canari_forensics*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,11 +1,20 @@
 # canari-forensics
 Scan your LLM logs for breaches that already happened.
 
+## Install
+
+```bash
+python3 -m pip install -e . --no-build-isolation
+```
+
+If your environment blocks package installs, you can run directly with `python3 -m canari_forensics ...`.
+After install, run `canari ...` directly.
+
 ## Quick start
 
 ```bash
 # 1) Scan OTEL JSON exports (generic/datadog/honeycomb via --provider)
-./canari forensics scan \
+canari forensics scan \
   --source otel \
   --provider generic \
   --logs ./otel-traces \
@@ -13,7 +22,7 @@ Scan your LLM logs for breaches that already happened.
   --out ./forensics-scan.json
 
 # 2) Generate enterprise audit outputs
-./canari forensics report \
+canari forensics report \
   --scan-report ./forensics-scan.json \
   --client "Acme Corp" \
   --application "AI Gateway" \
@@ -26,7 +35,7 @@ Scan your LLM logs for breaches that already happened.
 
 ```bash
 # initialize audit workspace
-./canari forensics audit init \
+canari forensics audit init \
   --name "Q1 2026 AI Gateway Audit" \
   --source otel \
   --provider generic \
@@ -35,15 +44,15 @@ Scan your LLM logs for breaches that already happened.
   --application "AI Gateway"
 
 # run scan and report using stored metadata
-./canari forensics audit scan --audit-id q1-2026-ai-gateway-audit
-./canari forensics audit report --audit-id q1-2026-ai-gateway-audit
+canari forensics audit scan --audit-id q1-2026-ai-gateway-audit
+canari forensics audit report --audit-id q1-2026-ai-gateway-audit
 ```
 
 ## One-command audit from config
 
 ```bash
 cp .canari.yml.example .canari.yml
-./canari forensics audit run --config .canari.yml
+canari forensics audit run --config .canari.yml
 ```
 
 ## Local demo checkpoint
@@ -55,7 +64,7 @@ cp .canari.yml.example .canari.yml
 ## Databricks direct scan
 
 ```bash
-./canari forensics scan \
+canari forensics scan \
   --source databricks \
   --experiment-id 1234567890 \
   --tracking-uri databricks \
@@ -65,7 +74,7 @@ cp .canari.yml.example .canari.yml
 ## Real-time OTLP receiver
 
 ```bash
-./canari forensics receive \
+canari forensics receive \
   --host 0.0.0.0 \
   --port 4318 \
   --db ./canari-forensics.db
