@@ -23,6 +23,7 @@ from canari_forensics.reporting import (
 )
 from canari_forensics.status import collect_status
 from canari_forensics.export import export_findings_csv
+from canari_forensics.attest import create_attestation, verify_attestation
 from canari_forensics.version import __version__
 
 
@@ -59,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
     export = forensics_sub.add_parser("export", help="Export findings from evidence")
     export.add_argument("--from-evidence", required=True)
     export.add_argument("--out-csv", required=True)
+
+    attest = forensics_sub.add_parser("attest", help="Create/verify evidence attestation")
+    attest.add_argument("--evidence")
+    attest.add_argument("--out")
+    attest.add_argument("--verify")
     report.add_argument("--scan-report", required=True, help="Path to scan JSON output")
     report.add_argument("--client", required=True)
     report.add_argument("--application", required=True)
@@ -124,10 +130,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Exported {count} findings to {args.out_csv}")
             return 0
 
+        if args.forensics_command == "attest":
+            if args.verify:
+                ok = verify_attestation(args.verify)
+                print(f"attestation_valid: {ok}")
+                return 0 if ok else 1
+            if not args.evidence or not args.out:
+                raise InputError("--evidence and --out are required unless --verify is used")
+            payload = create_attestation(args.evidence, args.out)
+            print(f"Attestation written: {args.out} sha256={payload['sha256']}")
+            return 0
+
         if args.forensics_command == "audit":
             return _main_audit(args)
 
-        raise UsageError("Missing subcommand. Use: canari forensics <status|scan|report|export|receive|audit>")
+        raise UsageError("Missing subcommand. Use: canari forensics <status|scan|report|export|attest|receive|audit>")
 
     except CanariError as exc:
         print(f"error: {exc}", file=sys.stderr)
