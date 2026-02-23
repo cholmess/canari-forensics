@@ -1,24 +1,33 @@
 # PyPI Release
 
-## Prerequisites
+## Recommended: Trusted Publisher (GitHub Actions)
 
-- PyPI account with permission for `canari-forensics`
-- `TWINE_USERNAME` and `TWINE_PASSWORD` (or API token)
-- Python 3.10+
+Use the workflow `.github/workflows/release-pypi.yml`.
+It publishes to PyPI when you push a tag matching `v*` (for example `v0.1.1`).
 
-## Build
+### 1) Configure Trusted Publisher on PyPI
+
+In PyPI project settings for `canari-forensics`, add a Trusted Publisher:
+- Owner: `cholmess`
+- Repository: `canari-forensics`
+- Workflow: `release-pypi.yml`
+- Environment (recommended): `pypi`
+
+### 2) Create and push a release tag
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+The workflow will:
+- build sdist/wheel
+- publish to PyPI via OIDC (no API token needed)
+
+## Manual fallback release
 
 ```bash
 ./scripts/release_pypi.sh
-```
-
-This generates:
-- `dist/canari_forensics-<version>.tar.gz`
-- `dist/canari_forensics-<version>-py3-none-any.whl`
-
-## Upload
-
-```bash
 python3 -m twine upload dist/*
 ```
 

@@ -1,4 +1,9 @@
 # canari-forensics
+
+[![PyPI package](https://img.shields.io/pypi/v/canari-forensics?label=pypi%20package)](https://pypi.org/project/canari-forensics/)
+[![CI](https://github.com/cholmess/canari-forensics/actions/workflows/ci.yml/badge.svg)](https://github.com/cholmess/canari-forensics/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Scan your LLM logs for breaches that already happened.
 
 Version: `0.1.0`  
