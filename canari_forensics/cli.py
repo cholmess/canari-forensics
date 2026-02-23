@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Sequence
 
 from canari_forensics.audit import AuditManager
-from canari_forensics.config import ConfigError, load_simple_yaml
+from canari_forensics.config import load_simple_yaml
+from canari_forensics.errors import CanariError, ConfigError, InputError, NotFoundError, UsageError
 from canari_forensics.models import ConversationTurn
 from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
 from canari_forensics.parsers.otel import OTELParser
@@ -83,85 +84,91 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.command != "forensics":
-        parser.print_help()
-        return 2
+    try:
+        if args.command != "forensics":
+            raise UsageError("Missing command. Use: canari forensics ...")
 
-    if args.forensics_command == "scan":
-        return _main_scan(args)
+        if args.forensics_command == "scan":
+            return _main_scan(args)
 
-    if args.forensics_command == "receive":
-        receiver = OTLPReceiver(host=args.host, port=args.port, db_path=args.db)
-        print(f"Canari OTLP receiver listening on http://{args.host}:{args.port}/v1/traces")
-        try:
-            receiver.serve_forever()
-        except KeyboardInterrupt:  # pragma: no cover
-            pass
-        return 0
+        if args.forensics_command == "receive":
+            receiver = OTLPReceiver(host=args.host, port=args.port, db_path=args.db)
+            print(f"Canari OTLP receiver listening on http://{args.host}:{args.port}/v1/traces")
+            try:
+                receiver.serve_forever()
+            except KeyboardInterrupt:  # pragma: no cover
+                pass
+            return 0
 
-    if args.forensics_command == "report":
-        return _main_report(args)
+        if args.forensics_command == "report":
+            return _main_report(args)
 
-    if args.forensics_command == "audit":
-        return _main_audit(args)
+        if args.forensics_command == "audit":
+            return _main_audit(args)
 
-    parser.print_help()
-    return 2
+        raise UsageError("Missing subcommand. Use: canari forensics <scan|report|receive|audit>")
+
+    except CanariError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return exc.exit_code
 
 
 def _main_audit(args: argparse.Namespace) -> int:
     mgr = AuditManager()
 
-    try:
-        if args.audit_command == "init":
-            paths = mgr.init_audit(
-                name=args.name,
-                source=args.source,
-                provider=args.provider,
-                logs=args.logs,
-                experiment_id=args.experiment_id,
-                tracking_uri=args.tracking_uri,
-                client=args.client,
-                application=args.application,
-            )
-            print(f"Audit initialized: {paths.root}")
-            return 0
+    if args.audit_command == "init":
+        paths = mgr.init_audit(
+            name=args.name,
+            source=args.source,
+            provider=args.provider,
+            logs=args.logs,
+            experiment_id=args.experiment_id,
+            tracking_uri=args.tracking_uri,
+            client=args.client,
+            application=args.application,
+        )
+        print(f"Audit initialized: {paths.root}")
+        return 0
 
-        if args.audit_command == "scan":
+    if args.audit_command == "scan":
+        try:
             meta = mgr.load_metadata(args.audit_id)
-            scan_args = argparse.Namespace(
-                source=meta["source"],
-                provider=meta.get("provider", "generic"),
-                format="otlp-json",
-                logs=meta.get("logs"),
-                experiment_id=meta.get("experiment_id"),
-                tracking_uri=meta.get("tracking_uri", "databricks"),
-                max_results=args.max_results,
-                file_pattern=args.file_pattern,
-                out=meta["scan_report"],
-            )
-            return _main_scan(scan_args)
+        except FileNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
 
-        if args.audit_command == "report":
+        scan_args = argparse.Namespace(
+            source=meta["source"],
+            provider=meta.get("provider", "generic"),
+            format="otlp-json",
+            logs=meta.get("logs"),
+            experiment_id=meta.get("experiment_id"),
+            tracking_uri=meta.get("tracking_uri", "databricks"),
+            max_results=args.max_results,
+            file_pattern=args.file_pattern,
+            out=meta["scan_report"],
+        )
+        return _main_scan(scan_args)
+
+    if args.audit_command == "report":
+        try:
             meta = mgr.load_metadata(args.audit_id)
-            report_args = argparse.Namespace(
-                scan_report=meta["scan_report"],
-                client=meta["client"],
-                application=meta["application"],
-                out_pdf=meta["pdf"],
-                out_evidence=meta["evidence"],
-                bp_dir=meta["bp_dir"],
-            )
-            return _main_report(report_args)
+        except FileNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
 
-        if args.audit_command == "run":
-            return _audit_run_from_config(args.config, mgr)
+        report_args = argparse.Namespace(
+            scan_report=meta["scan_report"],
+            client=meta["client"],
+            application=meta["application"],
+            out_pdf=meta["pdf"],
+            out_evidence=meta["evidence"],
+            bp_dir=meta["bp_dir"],
+        )
+        return _main_report(report_args)
 
-        raise ValueError("Missing audit subcommand")
+    if args.audit_command == "run":
+        return _audit_run_from_config(args.config, mgr)
 
-    except Exception as exc:  # pragma: no cover
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
+    raise UsageError("Missing audit subcommand. Use: canari forensics audit <init|scan|report|run>")
 
 
 def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
@@ -215,11 +222,7 @@ def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
 def _main_scan(args: argparse.Namespace) -> int:
     import json
 
-    try:
-        turns = _run_scan(args)
-    except Exception as exc:  # pragma: no cover - top-level UX path
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
+    turns = _run_scan(args)
 
     payload = {
         "source": args.source,
@@ -256,16 +259,16 @@ def _main_scan(args: argparse.Namespace) -> int:
 def _main_report(args: argparse.Namespace) -> int:
     try:
         turns = load_turns_from_scan_report(args.scan_report)
-        findings = detect_findings(turns)
-        evidence = build_evidence_pack(args.client, args.application, turns, findings)
-        write_evidence_pack(args.out_evidence, evidence)
-        snapshots = write_bp_snapshots(args.bp_dir, findings)
+    except FileNotFoundError as exc:
+        raise NotFoundError(f"Scan report not found: {args.scan_report}") from exc
 
-        lines = _build_pdf_lines(args.client, args.application, turns, findings, snapshots)
-        SimplePDF().write(args.out_pdf, lines)
-    except Exception as exc:  # pragma: no cover
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
+    findings = detect_findings(turns)
+    evidence = build_evidence_pack(args.client, args.application, turns, findings)
+    write_evidence_pack(args.out_evidence, evidence)
+    snapshots = write_bp_snapshots(args.bp_dir, findings)
+
+    lines = _build_pdf_lines(args.client, args.application, turns, findings, snapshots)
+    SimplePDF().write(args.out_pdf, lines)
 
     print(
         f"Report generated. findings={len(findings)} evidence={args.out_evidence} "
@@ -320,9 +323,11 @@ def _build_pdf_lines(
 def _run_scan(args: argparse.Namespace) -> list[ConversationTurn]:
     if args.source == "otel":
         if not args.logs:
-            raise ValueError("--logs is required when --source otel")
+            raise InputError("--logs is required when --source otel")
         parser = OTELParser()
         path = Path(args.logs)
+        if not path.exists():
+            raise NotFoundError(f"Logs path not found: {path}")
         if path.is_dir():
             turns: list[ConversationTurn] = []
             for file_path in sorted(path.rglob(args.file_pattern)):
@@ -332,17 +337,20 @@ def _run_scan(args: argparse.Namespace) -> list[ConversationTurn]:
 
     if args.source == "databricks":
         if not args.experiment_id:
-            raise ValueError("--experiment-id is required when --source databricks")
+            raise InputError("--experiment-id is required when --source databricks")
         parser = DatabricksAIGatewayParser()
-        return list(
-            parser.parse_mlflow_experiment(
-                experiment_id=args.experiment_id,
-                tracking_uri=args.tracking_uri,
-                max_results=args.max_results,
+        try:
+            return list(
+                parser.parse_mlflow_experiment(
+                    experiment_id=args.experiment_id,
+                    tracking_uri=args.tracking_uri,
+                    max_results=args.max_results,
+                )
             )
-        )
+        except RuntimeError as exc:
+            raise InputError(str(exc)) from exc
 
-    raise ValueError(f"Unsupported source: {args.source}")
+    raise UsageError(f"Unsupported source: {args.source}")
 
 
 if __name__ == "__main__":

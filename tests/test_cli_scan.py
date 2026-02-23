@@ -34,7 +34,7 @@ class CLIScanTests(unittest.TestCase):
 
     def test_scan_databricks_requires_experiment_id(self) -> None:
         rc = main(["forensics", "scan", "--source", "databricks", "--out", "x.json"])
-        self.assertEqual(rc, 1)
+        self.assertEqual(rc, 3)
 
     def test_scan_databricks_with_mocked_parser(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

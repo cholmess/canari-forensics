@@ -3,9 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-
-class ConfigError(ValueError):
-    pass
+from canari_forensics.errors import ConfigError
 
 
 def load_simple_yaml(path: str | Path) -> dict[str, Any]:
