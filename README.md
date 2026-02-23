@@ -39,6 +39,13 @@ Scan your LLM logs for breaches that already happened.
 ./canari forensics audit report --audit-id q1-2026-ai-gateway-audit
 ```
 
+## One-command audit from config
+
+```bash
+cp .canari.yml.example .canari.yml
+./canari forensics audit run --config .canari.yml
+```
+
 ## Databricks direct scan
 
 ```bash

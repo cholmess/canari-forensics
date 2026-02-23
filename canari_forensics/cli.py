@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Sequence
 
 from canari_forensics.audit import AuditManager
+from canari_forensics.config import ConfigError, load_simple_yaml
 from canari_forensics.models import ConversationTurn
 from canari_forensics.parsers.databricks import DatabricksAIGatewayParser
 from canari_forensics.parsers.otel import OTELParser
@@ -71,6 +72,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit_report = audit_sub.add_parser("report", help="Generate report for a saved audit")
     audit_report.add_argument("--audit-id", required=True)
+
+    audit_run = audit_sub.add_parser("run", help="Run init+scan+report from config")
+    audit_run.add_argument("--config", default=".canari.yml")
 
     return parser
 
@@ -150,11 +154,62 @@ def _main_audit(args: argparse.Namespace) -> int:
             )
             return _main_report(report_args)
 
+        if args.audit_command == "run":
+            return _audit_run_from_config(args.config, mgr)
+
         raise ValueError("Missing audit subcommand")
 
     except Exception as exc:  # pragma: no cover
         print(f"error: {exc}", file=sys.stderr)
         return 1
+
+
+def _audit_run_from_config(config_path: str, mgr: AuditManager) -> int:
+    cfg = load_simple_yaml(config_path)
+    fcfg = cfg.get("forensics", {})
+    if not isinstance(fcfg, dict):
+        raise ConfigError("Config key 'forensics' must be a mapping")
+
+    name = str(fcfg.get("audit_name", "Canari Audit"))
+    source = str(fcfg.get("source", "otel"))
+    provider = str(fcfg.get("provider", "generic"))
+    logs = fcfg.get("logs")
+    experiment_id = fcfg.get("experiment_id")
+    tracking_uri = str(fcfg.get("tracking_uri", "databricks"))
+    client = str(fcfg.get("client", "Unknown Client"))
+    application = str(fcfg.get("application", "Unknown Application"))
+    file_pattern = str(fcfg.get("file_pattern", "*.json"))
+    max_results = int(fcfg.get("max_results", 1000))
+
+    paths = mgr.init_audit(
+        name=name,
+        source=source,
+        provider=provider,
+        logs=str(logs) if logs else None,
+        experiment_id=str(experiment_id) if experiment_id else None,
+        tracking_uri=tracking_uri,
+        client=client,
+        application=application,
+    )
+    audit_id = paths.root.name
+
+    scan_rc = _main_audit(
+        argparse.Namespace(
+            audit_command="scan",
+            audit_id=audit_id,
+            file_pattern=file_pattern,
+            max_results=max_results,
+        )
+    )
+    if scan_rc != 0:
+        return scan_rc
+
+    report_rc = _main_audit(argparse.Namespace(audit_command="report", audit_id=audit_id))
+    if report_rc != 0:
+        return report_rc
+
+    print(f"Audit run complete: {paths.root}")
+    return 0
 
 
 def _main_scan(args: argparse.Namespace) -> int:

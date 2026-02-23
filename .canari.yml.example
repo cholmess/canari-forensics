@@ -1,0 +1,10 @@
+forensics:
+  source: otel
+  provider: generic
+  logs: ./tests/fixtures/otlp_sample.json
+  file_pattern: "*.json"
+  client: "Acme Corp"
+  application: "AI Gateway"
+  audit_name: "Q1 2026 AI Gateway Audit"
+  tracking_uri: databricks
+  max_results: 1000
